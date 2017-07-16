@@ -93,6 +93,7 @@ def print_usage():
     print >> sys.stderr, "        --max_unchanged_words N     -  Maximum unchanged words when extraction edit. Default 2."
     print >> sys.stderr, "        --beta B                    -  Beta value for F-measure. Default 0.5."
     print >> sys.stderr, "        --ignore_whitespace_casing  -  Ignore edits that only affect whitespace and caseing. Default no."
+    print >> sys.stderr, "  -s    --sentence_level"
 
 
 
@@ -101,9 +102,12 @@ beta = 0.5
 ignore_whitespace_casing= False
 verbose = False
 very_verbose = False
-opts, args = getopt(sys.argv[1:], "v", ["max_unchanged_words=", "beta=", "verbose", "ignore_whitespace_casing", "very_verbose"])
+sentence_level = False
+opts, args = getopt(sys.argv[1:], "vs", ["max_unchanged_words=", "beta=", "verbose", "ignore_whitespace_casing", "very_verbose", "sentence_level"])
 for o, v in opts:
-    if o in ('-v', '--verbose'):
+    if o in ('-s', '--sentence_level'):
+        sentence_level = True
+    elif o in ('-v', '--verbose'):
         verbose = True
     elif o == '--very_verbose':
         very_verbose = True
@@ -134,9 +138,11 @@ fin = smart_open(system_file, 'r')
 system_sentences = [line.decode("utf8").strip() for line in fin.readlines()]
 fin.close()
 
-p, r, f1 = levenshtein.batch_multi_pre_rec_f1(system_sentences, source_sentences, gold_edits, max_unchanged_words, beta, ignore_whitespace_casing, verbose, very_verbose)
+p, r, f1 = levenshtein.batch_multi_pre_rec_f1(system_sentences, source_sentences, gold_edits, max_unchanged_words, beta, ignore_whitespace_casing, verbose, very_verbose, sentence_level)
+
+if sentence_level:
+    return
 
 print "Precision   : %.4f" % p
 print "Recall      : %.4f" % r
 print "F_%.1f       : %.4f" % (beta, f1)
-

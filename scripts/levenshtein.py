@@ -99,7 +99,7 @@ def f1_suffstats(candidate, source, gold_edits, max_unchanged_words=2, ignore_wh
         print "-------------------------------------------"
     return (stat_correct, stat_proposed, stat_gold)
 
-def batch_multi_pre_rec_f1(candidates, sources, gold_edits, max_unchanged_words=2, beta=0.5, ignore_whitespace_casing= False, verbose=False, very_verbose=False):
+def batch_multi_pre_rec_f1(candidates, sources, gold_edits, max_unchanged_words=2, beta=0.5, ignore_whitespace_casing= False, verbose=False, very_verbose=False, sentence_level=False):
     assert len(candidates) == len(sources) == len(gold_edits)
     stat_correct = 0.0
     stat_proposed = 0.0
@@ -138,6 +138,7 @@ def batch_multi_pre_rec_f1(candidates, sources, gold_edits, max_unchanged_words=
         max_stat_correct = -1.0
         min_stat_proposed = float("inf")
         min_stat_gold = float("inf")
+        sent_lvl_stats = {}
         for annotator, gold in golds_set.iteritems():
             localdist = set_weights(E, dist, edits, gold, verbose, very_verbose)
             editSeq = best_edit_seq_bf(V, E, localdist, edits, very_verbose)
@@ -150,6 +151,7 @@ def batch_multi_pre_rec_f1(candidates, sources, gold_edits, max_unchanged_words=
                 print "edits (with transitive arcs):", edits
                 print "dist() =", localdist
                 print "viterbi path =", editSeq
+
             if ignore_whitespace_casing:
                 editSeq = filter(lambda x : not equals_ignore_whitespace_casing(x[2], x[3]), editSeq)
             correct = matchSeq(editSeq, gold, ignore_whitespace_casing, verbose)
@@ -187,9 +189,17 @@ def batch_multi_pre_rec_f1(candidates, sources, gold_edits, max_unchanged_words=
                 print "recall        :", r_local
                 print "f_%.1f         :" % beta, f1_local
                 print "-------------------------------------------"
+
+            if sentence_level:
+                sent_info = "{:.4f} {:.4f} {:.4f}".format(p_local, r_local, f1_local)
+                sent_lvl_stats[annotator] = sent_info
         if verbose:
             print ">> Chosen Annotator for line", i, ":", chosen_ann
             print ""
+
+        if sentence_level:
+            print sent_lvl_stats[chosen_ann], chosen_ann
+
         stat_correct += argmax_correct
         stat_proposed += argmax_proposed
         stat_gold += argmax_gold
