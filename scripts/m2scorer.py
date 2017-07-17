@@ -94,6 +94,7 @@ def print_usage():
     print >> sys.stderr, "        --beta B                    -  Beta value for F-measure. Default 0.5."
     print >> sys.stderr, "        --ignore_whitespace_casing  -  Ignore edits that only affect whitespace and caseing. Default no."
     print >> sys.stderr, "  -s    --sentence_level"
+    print >> sys.stderr, "  -n    --nbest_list"
 
 
 
@@ -103,10 +104,13 @@ ignore_whitespace_casing= False
 verbose = False
 very_verbose = False
 sentence_level = False
-opts, args = getopt(sys.argv[1:], "vs", ["max_unchanged_words=", "beta=", "verbose", "ignore_whitespace_casing", "very_verbose", "sentence_level"])
+nbest_list = False
+opts, args = getopt(sys.argv[1:], "vsn", ["max_unchanged_words=", "beta=", "verbose", "ignore_whitespace_casing", "very_verbose", "sentence_level", "nbest_list"])
 for o, v in opts:
     if o in ('-s', '--sentence_level'):
         sentence_level = True
+    elif o in ('-n', '--nbest_list'):
+        nbest_list = True
     elif o in ('-v', '--verbose'):
         verbose = True
     elif o == '--very_verbose':
@@ -135,14 +139,22 @@ source_sentences, gold_edits = load_annotation(gold_file)
 
 # load system hypotheses
 fin = smart_open(system_file, 'r')
-system_sentences = [line.decode("utf8").strip() for line in fin.readlines()]
+if nbest_list:
+    system_sentences = []
+    last_idx = None
+    for line in fin.readlines():
+        idx, sentence, _ = line.decode("utf8").strip().split(" ||| ", 2)
+        if last_idx != idx:
+            system_sentences.append([])
+            last_idx = idx
+        system_sentences[-1].append(sentence.strip())
+else:
+    system_sentences = [line.decode("utf8").strip() for line in fin.readlines()]
 fin.close()
 
-p, r, f1 = levenshtein.batch_multi_pre_rec_f1(system_sentences, source_sentences, gold_edits, max_unchanged_words, beta, ignore_whitespace_casing, verbose, very_verbose, sentence_level)
+p, r, f1 = levenshtein.batch_multi_pre_rec_f1(system_sentences, source_sentences, gold_edits, max_unchanged_words, beta, ignore_whitespace_casing, verbose, very_verbose, sentence_level, nbest_list)
 
-if sentence_level:
-    return
-
-print "Precision   : %.4f" % p
-print "Recall      : %.4f" % r
-print "F_%.1f       : %.4f" % (beta, f1)
+if not sentence_level and not nbest_list:
+    print "Precision   : %.4f" % p
+    print "Recall      : %.4f" % r
+    print "F_%.1f       : %.4f" % (beta, f1)

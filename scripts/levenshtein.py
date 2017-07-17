@@ -99,13 +99,23 @@ def f1_suffstats(candidate, source, gold_edits, max_unchanged_words=2, ignore_wh
         print "-------------------------------------------"
     return (stat_correct, stat_proposed, stat_gold)
 
-def batch_multi_pre_rec_f1(candidates, sources, gold_edits, max_unchanged_words=2, beta=0.5, ignore_whitespace_casing= False, verbose=False, very_verbose=False, sentence_level=False):
+def iterate_nbest_list(candidates, sources, gold_edits):
+    for hyps, src, gold_set in zip(candidates, sources, gold_edits):
+        for hyp in hyps:
+            yield hyp, src, gold_set
+
+def batch_multi_pre_rec_f1(candidates, sources, gold_edits, max_unchanged_words=2, beta=0.5, ignore_whitespace_casing= False, verbose=False, very_verbose=False, sentence_level=False, nbest_list=False):
     assert len(candidates) == len(sources) == len(gold_edits)
     stat_correct = 0.0
     stat_proposed = 0.0
     stat_gold = 0.0
     i = 0
-    for candidate, source, golds_set in zip(candidates, sources, gold_edits):
+    tuple_iter = zip(candidates, sources, gold_edits)
+    if nbest_list:
+        sentence_level = True
+        tuple_iter = iterate_nbest_list(candidates, sources, gold_edits)
+
+    for candidate, source, golds_set in tuple_iter:
         i = i + 1
         # Candidate system edit extraction
         candidate_tok = candidate.split()
@@ -191,14 +201,20 @@ def batch_multi_pre_rec_f1(candidates, sources, gold_edits, max_unchanged_words=
                 print "-------------------------------------------"
 
             if sentence_level:
-                sent_info = "{:.4f} {:.4f} {:.4f}".format(p_local, r_local, f1_local)
+                if nbest_list:
+                    sent_info = f1_local
+                else:
+                    sent_info = "{:.4f} {:.4f} {:.4f}".format(p_local, r_local, f1_local)
                 sent_lvl_stats[annotator] = sent_info
         if verbose:
             print ">> Chosen Annotator for line", i, ":", chosen_ann
             print ""
 
         if sentence_level:
-            print sent_lvl_stats[chosen_ann], chosen_ann
+            if nbest_list:
+                print sent_lvl_stats[chosen_ann]
+            else:
+                print sent_lvl_stats[chosen_ann], chosen_ann
 
         stat_correct += argmax_correct
         stat_proposed += argmax_proposed
